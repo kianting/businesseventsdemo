@@ -14,7 +14,6 @@ http://www.mulesoft.org/schema/mule/ee/dw http://www.mulesoft.org/schema/mule/ee
     <flow name="businesseventsdemoFlow">
         <http:listener config-ref="HTTP_Listener_Configuration" path="/testEvent" doc:name="HTTP"/>
         <set-variable variableName="messageId" value="#[message.id]" doc:name="Capture MessageId"/>
-        <logger message="Request Recieved ...." level="INFO" doc:name="Logger"/>
         <dw:transform-message doc:name="Convert Payload to Java Object">
             <dw:set-payload><![CDATA[%dw 1.0
 %output application/java
@@ -25,6 +24,17 @@ payload]]></dw:set-payload>
 ---
 payload]]></dw:set-variable>
         </dw:transform-message>
+        <tracking:custom-event event-name="TestEvent" doc:name="Log Start Events">
+            <tracking:meta-data key="OrderNo" value="#[flowVars.OrderNo]"/>
+            <tracking:meta-data key="OrderName" value="#[flowVars.OrderName]"/>
+            <tracking:meta-data key="Status" value="#[&quot;Success&quot;]"/>
+            <tracking:meta-data key="messageId" value="#[message.id]"/>
+            <tracking:meta-data key="responsePayload" value="#[payload]"/>
+            <tracking:meta-data key="originalPayload" value="#[flowVars.originalPayload]"/>
+            <tracking:meta-data key="startTimeStamp" value="#[(new Date()).toString()]"/>
+        </tracking:custom-event>
+        <set-variable variableName="OrderName" value="#[payload.OrderName]" doc:name="OrderName"/>
+        <set-variable variableName="OrderNo" value="#[payload.OrderNo]" doc:name="OrderNo"/>
         <enricher target="rst" doc:name="Message Enricher">
             <scripting:component doc:name="MockOutBound Order Submission">
                 <scripting:script engine="Groovy"><![CDATA[def result = new java.util.Random().nextInt(2 + 1 - 0) + 0 /new java.util.Random().nextInt(2 + 1 - 0) + 0
@@ -37,8 +47,6 @@ payload]]></dw:set-variable>
 %output application/json
 ---
 {
-	   "OrderNo"   : payload.OrderNo,
-       "OrderName" : payload.OrderName,
        "messageid"  : flowVars.messageId,
        "status"    : "Success"
 }]]></dw:set-payload>
@@ -47,14 +55,14 @@ payload]]></dw:set-variable>
          
 
         <tracking:custom-event event-name="TestEvent" doc:name="Capturing Success Events">
-            <tracking:meta-data key="OrderNo" value="#[payload.OrderNo]"/>
-            <tracking:meta-data key="OrderName" value="#[payload.OrderName]"/>
+            <tracking:meta-data key="OrderNo" value="#[flowVars.OrderNo]"/>
+            <tracking:meta-data key="OrderName" value="#[flowVars.OrderName]"/>
             <tracking:meta-data key="Status" value="#[&quot;Success&quot;]"/>
             <tracking:meta-data key="messageId" value="#[message.id]"/>
             <tracking:meta-data key="responsePayload" value="#[payload]"/>
             <tracking:meta-data key="originalPayload" value="#[flowVars.originalPayload]"/>
+            <tracking:meta-data key="finishTimeStamp" value="#[(new Date()).toString()]"/>
         </tracking:custom-event>
-        <logger message="Finished Processing ...." level="INFO" doc:name="Copy_of_Logger"/>
         <catch-exception-strategy  doc:name="businesseventsdemoCatch_Exception_Strategy" enableNotifications="false" logException="false">
 
             <set-property propertyName="http.status" value="#[&quot;500&quot;]" doc:name="set http.status"/>
@@ -64,8 +72,6 @@ payload]]></dw:set-variable>
 %output application/json
 ---
 {
-	   "OrderNo"   : payload.OrderNo,
-       "OrderName" : payload.OrderName,
        "messageid"  : flowVars.messageId,
        "status"    : "Fail"
 }]]></dw:set-payload>
@@ -73,14 +79,14 @@ payload]]></dw:set-variable>
 
 
             <tracking:custom-event event-name="TestEvent" doc:name="Capturing Fail Events">
-                <tracking:meta-data key="OrderNo" value="#[payload.OrderNo]"/>
-                <tracking:meta-data key="OrderName" value="#[payload.OrderName]"/>
+                <tracking:meta-data key="OrderNo" value="#[flowVars.OrderNo]"/>
+                <tracking:meta-data key="OrderName" value="#[flowVars.OrderName]"/>
                 <tracking:meta-data key="Status" value="#[&quot;Fail&quot;]"/>
                 <tracking:meta-data key="messageId" value="#[message.id]"/>
                 <tracking:meta-data key="responsePayload" value="#[payload]"/>
                 <tracking:meta-data key="originalPayload" value="#[flowVars.originalPayload]"/>
+                <tracking:meta-data key="finishTimeStamp" value="#[(new Date()).toString()]"/>
             </tracking:custom-event>
-            <logger message="Finished Error Processing ...." level="INFO" doc:name="Copy_of_Copy_of_Logger"/>
         </catch-exception-strategy>
     </flow>
 </mule>
