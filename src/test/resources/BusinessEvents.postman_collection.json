@@ -1,0 +1,41 @@
+{
+	"variables": [],
+	"info": {
+		"name": "BusinessEvents",
+		"_postman_id": "399441a8-8021-0b62-48b3-258a81832174",
+		"schema": "https://schema.getpostman.com/json/collection/v2.0.0/collection.json"
+	},
+	"item": [
+		{
+			"name": "localhost:8081/testEvent",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"type": "text/javascript",
+						"exec": [
+							"tests[\"Status code is 200\"] = responseCode.code === 200;"
+						]
+					}
+				}
+			],
+			"request": {
+				"url": "localhost:8081/testEvent",
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json",
+						"description": ""
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n   \"OrderNo\":\"12345\",\n   \"OrderName\":\"Kian,Ting\"\n}"
+				},
+				"description": "Testing for Custom Business Events"
+			},
+			"response": []
+		}
+	]
+}

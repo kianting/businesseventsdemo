@@ -1,0 +1,86 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:dw="http://www.mulesoft.org/schema/mule/ee/dw" xmlns:json="http://www.mulesoft.org/schema/mule/json" xmlns:tracking="http://www.mulesoft.org/schema/mule/ee/tracking" xmlns:http="http://www.mulesoft.org/schema/mule/http" xmlns:scripting="http://www.mulesoft.org/schema/mule/scripting" xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation"
+	xmlns:spring="http://www.springframework.org/schema/beans" 
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-current.xsd
+http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
+http://www.mulesoft.org/schema/mule/scripting http://www.mulesoft.org/schema/mule/scripting/current/mule-scripting.xsd
+http://www.mulesoft.org/schema/mule/ee/tracking http://www.mulesoft.org/schema/mule/ee/tracking/current/mule-tracking-ee.xsd
+http://www.mulesoft.org/schema/mule/json http://www.mulesoft.org/schema/mule/json/current/mule-json.xsd
+http://www.mulesoft.org/schema/mule/ee/dw http://www.mulesoft.org/schema/mule/ee/dw/current/dw.xsd">
+    <http:listener-config name="HTTP_Listener_Configuration" host="0.0.0.0" port="8081" doc:name="HTTP Listener Configuration"/>
+    <flow name="businesseventsdemoFlow">
+        <http:listener config-ref="HTTP_Listener_Configuration" path="/testEvent" doc:name="HTTP"/>
+        <set-variable variableName="messageId" value="#[message.id]" doc:name="Capture MessageId"/>
+        <logger message="Request Recieved ...." level="INFO" doc:name="Logger"/>
+        <dw:transform-message doc:name="Convert Payload to Java Object">
+            <dw:set-payload><![CDATA[%dw 1.0
+%output application/java
+---
+payload]]></dw:set-payload>
+            <dw:set-variable variableName="originalPayload"><![CDATA[%dw 1.0
+%output application/json
+---
+payload]]></dw:set-variable>
+        </dw:transform-message>
+        <enricher target="rst" doc:name="Message Enricher">
+            <scripting:component doc:name="MockOutBound Order Submission">
+                <scripting:script engine="Groovy"><![CDATA[def result = new java.util.Random().nextInt(2 + 1 - 0) + 0 /new java.util.Random().nextInt(2 + 1 - 0) + 0
+]]></scripting:script>
+            </scripting:component>
+        </enricher>
+          
+        <dw:transform-message doc:name="Prepare Success Response Message">
+            <dw:set-payload><![CDATA[%dw 1.0
+%output application/json
+---
+{
+	   "OrderNo"   : payload.OrderNo,
+       "OrderName" : payload.OrderName,
+       "messageid"  : flowVars.messageId,
+       "status"    : "Success"
+}]]></dw:set-payload>
+        </dw:transform-message>
+
+         
+
+        <tracking:custom-event event-name="TestEvent" doc:name="Capturing Success Events">
+            <tracking:meta-data key="OrderNo" value="#[payload.OrderNo]"/>
+            <tracking:meta-data key="OrderName" value="#[payload.OrderName]"/>
+            <tracking:meta-data key="Status" value="#[&quot;Success&quot;]"/>
+            <tracking:meta-data key="messageId" value="#[message.id]"/>
+            <tracking:meta-data key="responsePayload" value="#[payload]"/>
+            <tracking:meta-data key="originalPayload" value="#[flowVars.originalPayload]"/>
+        </tracking:custom-event>
+        <logger message="Finished Processing ...." level="INFO" doc:name="Copy_of_Logger"/>
+        <catch-exception-strategy  doc:name="businesseventsdemoCatch_Exception_Strategy" enableNotifications="false" logException="false">
+
+            <set-property propertyName="http.status" value="#[&quot;500&quot;]" doc:name="set http.status"/>
+
+            <dw:transform-message doc:name="Prepare Fail Response Message">
+                <dw:set-payload><![CDATA[%dw 1.0
+%output application/json
+---
+{
+	   "OrderNo"   : payload.OrderNo,
+       "OrderName" : payload.OrderName,
+       "messageid"  : flowVars.messageId,
+       "status"    : "Fail"
+}]]></dw:set-payload>
+            </dw:transform-message>
+
+
+            <tracking:custom-event event-name="TestEvent" doc:name="Capturing Fail Events">
+                <tracking:meta-data key="OrderNo" value="#[payload.OrderNo]"/>
+                <tracking:meta-data key="OrderName" value="#[payload.OrderName]"/>
+                <tracking:meta-data key="Status" value="#[&quot;Fail&quot;]"/>
+                <tracking:meta-data key="messageId" value="#[message.id]"/>
+                <tracking:meta-data key="responsePayload" value="#[payload]"/>
+                <tracking:meta-data key="originalPayload" value="#[flowVars.originalPayload]"/>
+            </tracking:custom-event>
+            <logger message="Finished Error Processing ...." level="INFO" doc:name="Copy_of_Copy_of_Logger"/>
+        </catch-exception-strategy>
+    </flow>
+</mule>
